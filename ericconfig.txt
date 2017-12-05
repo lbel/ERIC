@@ -9,7 +9,7 @@ janneke=13420919
 
 
 [skills]
-janneke=magier3
+janneke=magier3,strijder1
 jip=slotenmaker,magier2
 
 
@@ -22,4 +22,11 @@ open=magier3
 [steen1]
 ardaddr=0x0b
 hack=slotenmaker
-open=magier3,magier2
+open=magier3,magier2,magier1
+
+
+[steen2]
+ardaddr=0x0a
+hack=slotenmaker
+open=strijder1,strijder2,strijder3
+close=magier1
