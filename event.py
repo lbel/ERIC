@@ -21,7 +21,6 @@ class Event:
         if self.is_hacking:
             return self.__hack_tick()
         elif self.__can_proceed():
-            print self.current_sequence
             if self.current_sequence:
                 next_action = self.current_sequence.pop()
                 try:
@@ -61,6 +60,7 @@ class Event:
         return True
         
     def __check_timer(self):
+        print ("Time elapsed: ",time.time() - self.timer_start)
         return time.time() - self.timer_start > self.timer_delay
         
     def __run_action(self, action):

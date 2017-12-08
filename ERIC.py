@@ -8,7 +8,8 @@ config = ConfigParser.ConfigParser()
 from event import Event
 
 def send_to_oscar(name):
-    urllib2.urlopen('http://localhost:5011/press/%s' % (name))
+    pass
+    #urllib2.urlopen('http://localhost:5011/press/%s' % (name))
     
 SERIAL_BAUD_RATE = 57600
 START_BYTE = b'\x02'
@@ -59,12 +60,17 @@ class Actuator:
         for key in commands:
             if config.has_option(self.title, key):
                 for level in [x.strip() for x in config.get(self.title, key).split(',')]:
-                    self.actions[level] = key
+                    self.actions[key] = level
+        if config.has_option(self.title,'hardware'):
+            self.hardware = config.get(self.title,'hardware')
+        else:
+            self.hardware = None
         
     def tell_oscar(self, action_name):
         if self.hardware:
             self.hardware.do_action(action_name)
         else:
+            print(self.actions[action_name])
             for action in self.actions[action_name]:
                 send_to_oscar(action)
     
@@ -131,7 +137,7 @@ class ArdRooms:
 commands = {
     'status': b'\x0b',
     'open': b'\x0c',
-    'close': b'\x0d',
+    'sluit': b'\x0d',
     'hack': b'\x0e'
 }
 
