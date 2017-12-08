@@ -1,32 +1,92 @@
 [common]
-devices=steen1,deur1
-spelers=janneke,jip
-port=com5
+port = COM3
+spelers = janneke,jip
+rooms = floor, sfx, spot
+ard_rooms = actors, sensors, events
+ard_port = COM22
+
+
+[actors]
+devices = deur1, deur2, deur3, deur4, steen1_act, steen2_act, steen3_act, steen4_act
+
+[deur1]
+open = light.floor.blackout
+sluit = bladibla
+
+[deur2]
+open = wildcard2
+
+[deur3]
+open = wildcard3
+
+[deur4]
+open = wildcard4
+
+[steen1_act]
+hack = onklaarmaken
+open = wildcard1
+hardware = steen1
+
+[steen2_act]
+hack = onklaarmaken
+open = wildcard2
+hardware = steen2
+
+[steen3_act]
+hack = onklaarmaken
+open = wildcard3
+hardware = steen3
+
+[steen4_act]
+hack = onklaarmaken
+open = wildcard4
+hardware = steen4
+
+
+[sensors]
+devices = steen1, steen2, steen3, steen4, poort
+
+[steen1]
+ardaddr = 0x0a
+events = event1
+
+[steen2]
+ardaddr = 0x0f
+events = event2
+
+[steen3]
+ardaddr = 0x0c
+events = event2
+
+[steen4]
+ardaddr = 0x0d
+events = event2
+
+[poort]
+ardaddr = 0x0e
+events = event2
+
+[events]
+devices = event1, event2
+
+[event1]
+event_id = 0xf0
+actors = deur1, steen1_act
+wildcard1 = sluit, 900, open
+onklaarmaken = hack(steen1_act,wildcard1)
+
+[event2]
+event_id = 0xf1
+actors = deur2, steen2_act
+wildcard2 = sluit, 900, open
+onklaarmaken = hack(steen2_act,wildcard2)
+
 
 [spelers]
-jip=13421961
-janneke=13420919
+jip = 13421961
+janneke = 13420919
 
 
 [skills]
-janneke=magier3,strijder1
-jip=slotenmaker,magier2
-
-
-[deur1]
-ardaddr=0x0f
-hack=slotenmaker
-open=magier3
-
-
-[steen1]
-ardaddr=0x0b
-hack=slotenmaker
-open=magier3,magier2,magier1
-
-
-[steen2]
-ardaddr=0x0a
-hack=slotenmaker
-open=strijder1,strijder2,strijder3
-close=magier1
+janneke = wildcard2
+jip = wildcard2, onklaarmaken
