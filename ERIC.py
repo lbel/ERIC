@@ -1,14 +1,18 @@
 import serial, time
 #from kivy.logger import Logger
 #log = Logger
-
-SERIAL_BAUD_RATE = 57600
-START_BYTE = b'\x02'
-END_BYTE   = b'\x03'
-
+import urllib2
 import ConfigParser
 config = ConfigParser.ConfigParser()
 
+from event import Event
+
+def send_to_oscar(name):
+    urllib2.urlopen('http://localhost:5011/press/%s' % (name))
+    
+SERIAL_BAUD_RATE = 57600
+START_BYTE = b'\x02'
+END_BYTE   = b'\x03'
 
 def parse_status_response(data):
     i = 0
@@ -45,28 +49,85 @@ def parse_status_response(data):
         i = i + 1
     return 0
 
-class UnitUniverse:
+class Actuator:
+    def __init__(self, title):
+        self.title = title
+        self.actions = {}
+        self.readConfig()
+        
+    def readConfig(self):
+        for key in commands:
+            if config.has_option(self.title, key):
+                for level in [x.strip() for x in config.get(self.title, key).split(',')]:
+                    self.actions[level] = key
+        
+    def tell_oscar(self, action_name):
+        if self.hardware:
+            self.hardware.do_action(action_name)
+        else:
+            for action in self.actions[action_name]:
+                send_to_oscar(action)
+    
+    
+class ArdUniverse:
     def __init__(self, config_file):
         self.parseConfig(config_file)
 
     def parseConfig(self, config_file):
         config.read(config_file)
 
-        self.port = config.get('common', 'port', 'COM20')
+        self.port = config.get('common', 'ard_port', 'COM20')
         self.connect(self.port)
 
-        devicenames = map(lambda x:x.strip(), config.get('common', 'devices').split(','))
-        self.devices = []
-        for device in devicenames:
-            self.devices.append(Unit(device, int(config.get(device,'ardaddr'),0), self.arduino))
+        roomnames = map(lambda x:x.strip(), config.get('common', 'ard_rooms').split(','))
+        self.rooms = {}
+        devices_dict = {}
+
+        for room in roomnames:
+            devicenames = map(lambda x:x.strip(), config.get(room, 'devices').split(','))
+            devices = []
+            events = []
+            for device in devicenames:
+                if room == 'actors':
+                    actuator = Actuator(device)
+                    devices.append(actuator)
+                    devices_dict[device] = actuator
+                elif room == 'sensors':
+                    sensor = Sensor(device, int(config.get(device,'ardaddr'),0), self.arduino, map(lambda x:x.strip(), config.get(device, 'events').split(',')))
+                    devices.append(sensor)
+                    devices_dict[device] = sensor
+                elif room == 'events':
+                    actors =  map(lambda x: devices_dict[x.strip()], config.get(device,'actors').split(','))
+                    actions = {}
+                    for item in config.items(device):
+                        actions[item[0]] = item[1]
+                    event = Event(config.get(device,'event_id'), actions, actors)
+                    events.append(event)
+                    devices_dict[device] = event
+            self.rooms[room] = ArdRooms(room, devices)
+            
+        for sensor in self.rooms['sensors'].devices:
+            event_names = sensor.events
+            sensor.events = []
+            for event_name in event_names:
+                sensor.events.append(devices_dict[event_name])
 
     def connect(self, port, timeout = 0.1):
         self.arduino = serial.Serial(port, SERIAL_BAUD_RATE, timeout = timeout)
         time.sleep(2)
 
-    def getDevice(self, name):
-        return self.devices[name]
-
+        
+class ArdRooms:
+    def __init__(self, title, devices):
+        self.title = title
+        self.devices = devices
+        
+    def get_number_of_devices(self):
+        return len(self.devices)
+        
+    def get_device_status(self, title):
+        return self.devices[title].statuscode
+        
 commands = {
     'status': b'\x0b',
     'open': b'\x0c',
@@ -74,66 +135,18 @@ commands = {
     'hack': b'\x0e'
 }
 
-
-class Unit:
-    def __init__(self, title, address, arduino):
+class Sensor:
+    def __init__(self, title, address, arduino, events):
         self.title = title
         self.address = address
         self.arduino = arduino
+        self.events = events
         self.statuscode = None
         self.notfoundcounter = 0
-        self.readConfig()
         self.hacklist = []
         self.timer = None
         self.ishacking = None
         self.data = [0,0,0]
-        
-    def readConfig(self):
-        self.actions = {}
-        for key in commands:
-            if config.has_option(self.title, key):
-                for level in [x.strip() for x in config.get(self.title, key).split(',')]:
-                    self.actions[level] = key
-
-    def what_happens(self, player):
-        possibleactions = [key for value, key in self.actions.items() if value in player.skills]
-        if 'open' in possibleactions:
-            self.ishacking = None
-            self.data = [0,200,0]
-            return 'open'
-
-        if 'hack' in possibleactions:
-            if player.name in self.hacklist:
-                self.ishacking = None
-                self.data = [0,200,0]
-                return 'open'
-            else:
-                if player.name == self.ishacking:
-                    # timer loopt al
-                    delta = time.time() - self.timer
-                    self.set_keystone_led(delta)
-                    print('Player ',player.name,' is now hacking for ',delta,'seconds')
-
-                    if delta > 300:
-                        self.hacklist.append(player.name)
-                        self.ishacking = None
-                        self.data = [200,200,200]
-                        return 'open'
-                else:
-                    # star timer
-                    self.timer = time.time()					
-                    self.ishacking = player.name
-                    self.data = [200,100,150]
-                    #log.info('[ERIC run log: %f] Player %s started hacking',time.time(),player.name)
-                    print('At ',time.time(),': Player ',player.name,' started hacking')
-                    return 'hack'
-                return 'hack'
-
-        if 'close' in possibleactions:
-            self.ishacking = None
-            return 'close'
-
-        return None
 
     def get_status(self):
         command = commands['status']
@@ -183,20 +196,7 @@ class Unit:
             else:
                 retValue = parse_status_response(data)
                 return retValue
-
-    def set_keystone_led(self, timebase):
-        if timebase < 100:
-            fadespeed = 5
-        elif timebase < 200:
-            fadespeed = 10
-        else:
-            fadespeed = 15
-
-        for x in xrange(0,len(self.data)-1):
-            self.data[x] = self.data[x] + fadespeed
-            if (self.data[x] > 200):
-                self.data[x] = fadespeed
-
+                
 
 class Player:
     def __init__(self, name):
@@ -219,46 +219,39 @@ class Players:
             self.rfidmap[player.rfid] = player
 
     def find_player_for_rfid(self, rfid):	
-        if rfid in self.rfidmap:
-            return self.rfidmap[rfid]
-        return None
+        return self.rfidmap.get(rfid,None)
 
-    def find_action_for_rfid_at_unit(self, rfid, u):
-        player = self.find_player_for_rfid(rfid)
-        if not player:
-            u.ishacking = None
-            return None
-
-        action = u.what_happens(player)
-        return action
-
-
+        
+active_events = set()
+        
 def main():
-    units = UnitUniverse('ericconfig.txt')#[Unit(b'\x0b', arduino), Unit(b'\x0f', arduino)]
+    ardUniverse = ArdUniverse('ericconfig.txt')
     players = Players()
 
-    previousactions = {}
-
     while True:
-        for unit in units.devices:
-            status = unit.get_status()
-            if unit.title in previousactions:
-                previousaction = previousactions[unit.title]
-            else:
-                previousaction = None
-
-            action = players.find_action_for_rfid_at_unit(status, unit)
-            confirm = unit.do_action(action)
+        for sensor in ardUniverse.rooms['sensors'].devices:
+            status = sensor.get_status()
+            print(status)
+            player = players.find_player_for_rfid(status)
+            for event in sensor.events:
+                handle_event(event, player)
             
-            if action != previousaction:
-                print(action)
-                # state change! Yay!
 
-                previousactions[unit.title] = action
-
-                # do coole dingen met deze state change
-                # if action == 'hack':
-                #     oscar.call('/start/%s.open' % (unit.title))
-
+def handle_event(event, player):
+    is_active = event.eventID in active_events
+    running = False
+    if player:
+        if not is_active:
+            event.start(player)
+            active_events.add(event.eventID)
+        running = event.tick()
+    print running
+    if is_active:
+        if not player or player != event.current_player:
+            event.stop_hack()
+            
+        if not running:
+            active_events.remove(event.eventID)
+        
 if __name__ == '__main__':
     main()
