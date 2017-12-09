@@ -17,7 +17,6 @@ class Event:
         self.current_sequence = self.__find_action_for_player(player).split(",")
         
     def tick(self):
-        print("Tick")
         if self.is_hacking:
             return self.__hack_tick()
         elif self.__can_proceed():
@@ -64,7 +63,6 @@ class Event:
         return time.time() - self.timer_start > self.timer_delay
         
     def __run_action(self, action):
-        print(action)
         if action.startswith("hack"):
             self.hack_steen, self.hack_skill = action.split("hack(")[1].split(")")[0].split(",")
             self.__do_hack()

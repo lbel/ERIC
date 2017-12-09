@@ -61,16 +61,11 @@ class Actuator:
             if config.has_option(self.title, key):
                 for level in [x.strip() for x in config.get(self.title, key).split(',')]:
                     self.actions[key] = level
-        if config.has_option(self.title,'hardware'):
-            self.hardware = config.get(self.title,'hardware')
-        else:
-            self.hardware = None
         
     def tell_oscar(self, action_name):
         if self.hardware:
             self.hardware.do_action(action_name)
         else:
-            print(self.actions[action_name])
             for action in self.actions[action_name]:
                 send_to_oscar(action)
     
@@ -111,12 +106,24 @@ class ArdUniverse:
                     events.append(event)
                     devices_dict[device] = event
             self.rooms[room] = ArdRooms(room, devices)
-            
+        
+        
         for sensor in self.rooms['sensors'].devices:
             event_names = sensor.events
             sensor.events = []
             for event_name in event_names:
                 sensor.events.append(devices_dict[event_name])
+        
+        # TEMPORARY PATCH
+        for actor in self.rooms['actors'].devices:
+            sensor_name = None
+            actor.hardware = None
+            if config.has_option(actor.title,'hardware'):
+                sensor_name = config.get(actor.title,'hardware')
+            for sensor in self.rooms['sensors'].devices:
+                if sensor_name == sensor.title:
+                    actor.hardware = sensor   
+        
 
     def connect(self, port, timeout = 0.1):
         self.arduino = serial.Serial(port, SERIAL_BAUD_RATE, timeout = timeout)
@@ -180,6 +187,7 @@ class Sensor:
 
         if action in commands:
             command = commands[action]
+            print ord(command)
             self.send_command(command)
             return self.wait_for_confirm()
 
@@ -237,7 +245,8 @@ def main():
     while True:
         for sensor in ardUniverse.rooms['sensors'].devices:
             status = sensor.get_status()
-            print(status)
+            if status:
+                print(status)
             player = players.find_player_for_rfid(status)
             for event in sensor.events:
                 handle_event(event, player)
@@ -251,7 +260,6 @@ def handle_event(event, player):
             event.start(player)
             active_events.add(event.eventID)
         running = event.tick()
-    print running
     if is_active:
         if not player or player != event.current_player:
             event.stop_hack()
