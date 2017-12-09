@@ -187,7 +187,6 @@ class Sensor:
 
         if action in commands:
             command = commands[action]
-            print ord(command)
             self.send_command(command)
             return self.wait_for_confirm()
 
@@ -249,23 +248,24 @@ def main():
                 print(status)
             player = players.find_player_for_rfid(status)
             for event in sensor.events:
-                handle_event(event, player)
+                handle_event(event, player, sensor)
             
 
-def handle_event(event, player):
+def handle_event(event, player, sensor):
     is_active = event.eventID in active_events
     running = False
-    if player:
-        if not is_active:
-            event.start(player)
-            active_events.add(event.eventID)
-        running = event.tick()
     if is_active:
         if not player or player != event.current_player:
             event.stop_hack()
-            
+        
+        running = event.tick()
         if not running:
             active_events.remove(event.eventID)
+    else:
+        if player:
+            event.start(player, sensor)
+            active_events.add(event.eventID)
+        
         
 if __name__ == '__main__':
     main()

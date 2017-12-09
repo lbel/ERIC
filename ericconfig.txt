@@ -10,17 +10,20 @@ ard_port = COM22
 devices = deur1, deur2, deur3, deur4, steen1_act, steen2_act, steen3_act, steen4_act
 
 [deur1]
-open = light.floor.blackout
-sluit = bladibla
+open = deur1.open
+sluit = deur1.close
 
 [deur2]
-open = wildcard2
+open = deur2.open
+sluit = deur2.close
 
 [deur3]
-open = wildcard3
+open = deur3.open
+sluit = deur3.close
 
 [deur4]
-open = wildcard4
+open = deur4.open
+sluit = deur4.close
 
 [steen1_act]
 hack = onklaarmaken
@@ -89,4 +92,4 @@ janneke = 13420919
 
 [skills]
 janneke = wildcard2
-jip = wildcard2, onklaarmaken
+jip = wildcard1, onklaarmaken
