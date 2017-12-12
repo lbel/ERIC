@@ -81,7 +81,7 @@ onklaarmaken = hack(steen1_act,wildcard1)
 [event2]
 event_id = 0xf1
 actors = deur2, steen2_act
-wildcard2 =sluit,900,open
+wildcard2 =sluit,90,open
 onklaarmaken = hack(steen2_act,wildcard2)
 
 
