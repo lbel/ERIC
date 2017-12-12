@@ -148,6 +148,8 @@ commands = {
     'hack': b'\x0e'
 }
 
+wildcards = ['wildcard1', 'wildcard2', 'wildcard3', 'wildcard4']
+
 class Sensor:
     def __init__(self, title, address, arduino, events):
         self.title = title
@@ -166,11 +168,11 @@ class Sensor:
         self.send_command(command)
         newstatuscode = self.read_response()
 
-        if not newstatuscode and self.statuscode:
+        if newstatuscode != self.statuscode:
             self.notfoundcounter += 1
             if self.notfoundcounter > 5:
-                self.statuscode = None
-                return None
+                self.statuscode = newstatuscode
+                return newstatuscode
             return self.statuscode
 
         if newstatuscode:
@@ -216,6 +218,12 @@ class Player:
         self.name = name
         self.rfid = config.getint('spelers', name)
         self.skills = [x.strip() for x in config.get('skills', name).split(',')]
+    
+    def add_skill(self, new_skill):
+        for skill_name in wildcards:
+            if skill_name in self.skills:
+                self.skills.remove(skill_name)
+        self.skills.append(new_skill)
 
 
 class Players:
@@ -244,8 +252,8 @@ def main():
     while True:
         for sensor in ardUniverse.rooms['sensors'].devices:
             status = sensor.get_status()
-            if status:
-                print(status)
+            # if status:
+                # print(status)
             player = players.find_player_for_rfid(status)
             for event in sensor.events:
                 handle_event(event, player, sensor)
@@ -255,7 +263,11 @@ def handle_event(event, player, sensor):
     is_active = event.eventID in active_events
     running = False
     if is_active:
-        if not player or player != event.current_player:
+        if event.active_sensor == sensor and player != event.current_player and event.is_hacking:
+            print(event.active_sensor)
+            print(event.current_player)
+            print(player)
+            print("Stopping the Hack")
             event.stop_hack()
         
         running = event.tick()
@@ -263,8 +275,13 @@ def handle_event(event, player, sensor):
             active_events.remove(event.eventID)
     else:
         if player:
-            event.start(player, sensor)
-            active_events.add(event.eventID)
+            print(set(player.skills).intersection(event.actions))
+            if bool(set(player.skills).intersection(event.actions)):
+                event.start(player, sensor)
+                active_events.add(event.eventID)
+            else:
+                sensor.data = [100,0,0]
+                sensor.do_action('sluit')
         
         
 if __name__ == '__main__':
