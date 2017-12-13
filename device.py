@@ -52,7 +52,7 @@ class Sensor:
         command = commands['status']
         newstatuscode = self.__hardware.send(command)
 
-        if newstatuscode != self.statuscode:
+        if self.statuscode and newstatuscode != self.statuscode:
             self.notfoundcounter += 1
             if self.notfoundcounter > 5:
                 self.statuscode = newstatuscode
