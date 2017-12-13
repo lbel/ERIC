@@ -1,4 +1,4 @@
-import multiprocessing, time
+import time
 
 class Event:
     def __init__(self, eventID, actions, actors):
