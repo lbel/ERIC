@@ -14,14 +14,14 @@ class Event:
         self.is_active = False
         self.timer_start = None
         self.timer_delay = None
-        
+
     def start(self, player, sensor):
         print("Start")
         self.current_player = player
         self.active_sensor = sensor
         self.is_active = True
         self.current_sequence = self.__find_action_for_player(player)
-        
+
     def tick(self):
         if self.is_hacking:
             return self.__hack_tick()
@@ -34,16 +34,16 @@ class Event:
                     self.__start_timer(delay)
                 except ValueError:
                     self.__run_action(next_action)
-                    
+
                 return True
             return False
         return True
-                    
+
     def stop_hack(self):
         self.is_hacking = False
         self.__stop_timer()
         self.current_sequence = []
-            
+
     def __find_action_for_player(self, player):
         action_list = list(set(player.skills).intersection(self.actions))
         if action_list:
@@ -56,11 +56,11 @@ class Event:
     def __start_timer(self, delay):
         self.timer_start = time.time()
         self.timer_delay = delay
-        
+
     def __stop_timer(self):
         self.timer_start = None
         self.timer_delay = None
-        
+
     def __timer_is_done(self):
         if self.timer_start is not None:
             if self.__check_timer():
@@ -69,11 +69,11 @@ class Event:
             else:
                 return False
         return True
-        
+
     def __check_timer(self):
-        print ("Time elapsed: ",time.time() - self.timer_start)
+        print("Event {} - time elapsed: {:.1f}/{:.1f}".format(self.eventID, time.time() - self.timer_start, self.timer_delay))
         return time.time() - self.timer_start > self.timer_delay
-        
+
     def __run_action(self, action):
         print(action)
         if action.startswith("hack"):
@@ -85,14 +85,14 @@ class Event:
             else:
                 self.active_sensor.data = [0,0,100]
             for actor in self.actors:
-                actor.tell_oscar(action)
+                actor.do_action(action)
 
     def __start_hack(self):
         self.is_hacking = True
         self.__start_timer(300)
         self.active_sensor.data = self.__get_keystone_led(0)
         self.active_sensor.do_action("hack")
-    
+
     def __hack_tick(self):
         delta = time.time() - self.timer_start
         self.active_sensor.data = self.__get_keystone_led(delta)
@@ -106,7 +106,7 @@ class Event:
             self.active_sensor.data = [200,200,200]
             self.active_sensor.do_action("hack")
         return True
-                
+
     def __get_keystone_led(self, timebase):
         time_offset = [0,np.pi/2,np.pi/4]
         list = [0,0,0]

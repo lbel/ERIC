@@ -1,146 +1,94 @@
-import serial, time
 #from kivy.logger import Logger
 #log = Logger
-import urllib2
 import ConfigParser
 config = ConfigParser.ConfigParser()
 
 from event import Event
-
-def send_to_oscar(name):
-    pass
-    #urllib2.urlopen('http://localhost:5011/press/%s' % (name))
-    
-SERIAL_BAUD_RATE = 57600
-START_BYTE = b'\x02'
-END_BYTE   = b'\x03'
-
-def parse_status_response(data):
-    i = 0
-    crc = 0
-    tag = 0
-    startFound = False
-    endFound = False
-    value = 0
-
-    while (i < 8):
-        dataByte = data[i]
-
-        if dataByte == START_BYTE:
-            startIndex = i
-            startFound = True
-
-        elif ((dataByte == END_BYTE) and (endFound == False)):
-            endFound = True
-
-        else:
-            if (startFound == True) and (endFound == False):
-                crc ^= ord(dataByte)
-                if (i >= (startIndex + 2)):
-                    value = value << 8
-                    value ^= ord(dataByte)
-
-            if endFound == True:
-                checksum = ord(dataByte)
-                if checksum == crc:
-                    return value
-                else:
-                    return 0
-
-        i = i + 1
-    return 0
+from hardware import HardwareInterface, OscarInterface, ArduinoInterface, TestActuator, TestSensor
+from serial import SerialPool
 
 class Actuator:
-    def __init__(self, title):
+    def __init__(self, title, config):
         self.title = title
         self.actions = {}
-        self.readConfig()
-        
-    def readConfig(self):
+        self.__readConfig(config)
+
+    def __readConfig(self, config):
         for key in commands:
             if config.has_option(self.title, key):
-                for level in [x.strip() for x in config.get(self.title, key).split(',')]:
-                    self.actions[key] = level
-        
-    def tell_oscar(self, action_name):
-        if self.hardware:
-            self.hardware.do_action(action_name)
+                self.actions[key] = map(str.strip, config.get(self.title, key).split(','))
+
+    def set_hardware(self, config, sensors_dict):
+        if DEBUG:
+            self.__hardware = TestActuator(self.title)
+        elif config.has_option(self.title, 'hardware'):
+            self.__hardware = sensors_dict[config.get(self.title, 'hardware')].get_hardware()
         else:
-            for action in self.actions[action_name]:
-                send_to_oscar(action)
-    
-    
+            self.__hardware = OscarInterface('http://localhost:5011/press/{}'.format(self.title))
+
+    def connect(self):
+        return self.__hardware.connect()
+
+    def do_action(self, action_name):
+        for action in self.actions.get(action_name, []):
+            self.__hardware.send(action)
+
 class ArdUniverse:
     def __init__(self, config_file):
+        self.actors = []
+        self.sensors = []
+        self.events = []
         self.parseConfig(config_file)
 
     def parseConfig(self, config_file):
         config.read(config_file)
 
-        self.port = config.get('common', 'ard_port', 'COM20')
-        self.connect(self.port)
+        port = config.get('common', 'ard_port', 'COM20')
 
-        roomnames = map(lambda x:x.strip(), config.get('common', 'ard_rooms').split(','))
-        self.rooms = {}
         devices_dict = {}
 
-        for room in roomnames:
-            devicenames = map(lambda x:x.strip(), config.get(room, 'devices').split(','))
-            devices = []
-            events = []
-            for device in devicenames:
-                if room == 'actors':
-                    actuator = Actuator(device)
-                    devices.append(actuator)
-                    devices_dict[device] = actuator
-                elif room == 'sensors':
-                    sensor = Sensor(device, int(config.get(device,'ardaddr'),0), self.arduino, map(lambda x:x.strip(), config.get(device, 'events').split(',')))
-                    devices.append(sensor)
-                    devices_dict[device] = sensor
-                elif room == 'events':
-                    actors =  map(lambda x: devices_dict[x.strip()], config.get(device,'actors').split(','))
-                    actions = {}
-                    for item in config.items(device):
-                        actions[item[0]] = item[1]
-                    event = Event(config.get(device,'event_id'), actions, actors)
-                    events.append(event)
-                    devices_dict[device] = event
-            self.rooms[room] = ArdRooms(room, devices)
-        
-        
-        for sensor in self.rooms['sensors'].devices:
+        actor_names = map(str.strip, config.get('actors', 'devices').split(','))
+        for actor_name in actor_names:
+            actor = Actuator(actor_name, config)
+            self.actors.append(actor)
+            devices_dict[actor_name] = actor
+
+        sensor_names = map(str.strip, config.get('sensors', 'devices').split(','))
+        for sensor_name in sensor_names:
+            if DEBUG:
+                hardware = TestSensor(sensor_name)
+            else:
+                hardware = ArduinoInterface(serial_pool, port, int(config.get(sensor_name, 'ardaddr'), 0))
+            sensor = Sensor(sensor_name, hardware, map(str.strip, config.get(sensor_name, 'events').split(',')))
+            self.sensors.append(sensor)
+            devices_dict[sensor_name] = sensor
+
+        event_names = map(str.strip, config.get('events', 'devices').split(','))
+        for event_name in event_names:
+            actors =  map(lambda x: devices_dict[x.strip()], config.get(event_name, 'actors').split(','))
+            actions = {}
+            for item in config.items(event_name):
+                if item[0] not in ['event_id', 'actors']:
+                    actions[item[0]] = item[1]
+            event = Event(config.get(event_name, 'event_id'), actions, actors)
+            self.events.append(event)
+            devices_dict[event_name] = event
+
+        # Connect events to sensors
+        for sensor in self.sensors:
             event_names = sensor.events
             sensor.events = []
             for event_name in event_names:
                 sensor.events.append(devices_dict[event_name])
-        
-        # TEMPORARY PATCH
-        for actor in self.rooms['actors'].devices:
-            sensor_name = None
-            actor.hardware = None
-            if config.has_option(actor.title,'hardware'):
-                sensor_name = config.get(actor.title,'hardware')
-            for sensor in self.rooms['sensors'].devices:
-                if sensor_name == sensor.title:
-                    actor.hardware = sensor   
-        
 
-    def connect(self, port, timeout = 0.1):
-        self.arduino = serial.Serial(port, SERIAL_BAUD_RATE, timeout = timeout)
-        time.sleep(2)
+        # Connect hardware to actors
+        for actor in self.actors:
+            actor.set_hardware(config, devices_dict)
 
-        
-class ArdRooms:
-    def __init__(self, title, devices):
-        self.title = title
-        self.devices = devices
-        
-    def get_number_of_devices(self):
-        return len(self.devices)
-        
-    def get_device_status(self, title):
-        return self.devices[title].statuscode
-        
+    def connect_all(self):
+        for device in self.sensors + self.actors:
+            device.connect()
+
 commands = {
     'status': b'\x0b',
     'open': b'\x0c',
@@ -151,22 +99,17 @@ commands = {
 wildcards = ['wildcard1', 'wildcard2', 'wildcard3', 'wildcard4']
 
 class Sensor:
-    def __init__(self, title, address, arduino, events):
+    def __init__(self, title, hardware, events):
         self.title = title
-        self.address = address
-        self.arduino = arduino
+        self.__hardware = hardware
         self.events = events
         self.statuscode = None
         self.notfoundcounter = 0
-        self.hacklist = []
-        self.timer = None
-        self.ishacking = None
         self.data = [0,0,0]
 
     def get_status(self):
         command = commands['status']
-        self.send_command(command)
-        newstatuscode = self.read_response()
+        newstatuscode = self.__hardware.send(command)
 
         if newstatuscode != self.statuscode:
             self.notfoundcounter += 1
@@ -183,42 +126,26 @@ class Sensor:
 
         return None
 
+    def get_hardware(self):
+        return self.__hardware
+
+    def connect(self):
+        return self.__hardware.connect()
+
     def do_action(self, action):
         if not action:
             action = None
 
         if action in commands:
             command = commands[action]
-            self.send_command(command)
-            return self.wait_for_confirm()
-
-    def send_command(self, command):
-        crc = (self.address ^ ord(command) ^ self.data[0] ^ self.data[1] ^ self.data[2])
-        n = self.arduino.write(self.format_msg(self.address, command, self.data[0], self.data[1], self.data[2], crc))
-
-    def format_msg(self, address, command, data0, data1, data2, data3):
-        return b''.join([START_BYTE, chr(address), command, chr(data0), chr(data1), chr(data2), END_BYTE, chr(data3)])
-
-    def wait_for_confirm(self):
-        return self.read_response()
-
-    def read_response(self):
-        time.sleep(.000001)
-        if self.arduino.readable():
-            data = self.arduino.readline()
-            if not data:
-                return None
-            else:
-                retValue = parse_status_response(data)
-                return retValue
-                
+            return self.__hardware.send(command)
 
 class Player:
     def __init__(self, name):
         self.name = name
         self.rfid = config.getint('spelers', name)
         self.skills = [x.strip() for x in config.get('skills', name).split(',')]
-    
+
     def add_skill(self, new_skill):
         for skill_name in wildcards:
             if skill_name in self.skills:
@@ -239,25 +166,30 @@ class Players:
             self.players.append(player)
             self.rfidmap[player.rfid] = player
 
-    def find_player_for_rfid(self, rfid):	
+    def find_player_for_rfid(self, rfid):
         return self.rfidmap.get(rfid,None)
 
-        
+
 active_events = set()
-        
+serial_pool = SerialPool()
+
+DEBUG = True
+
 def main():
     ardUniverse = ArdUniverse('ericconfig.txt')
+    ardUniverse.connect_all()
+
     players = Players()
 
     while True:
-        for sensor in ardUniverse.rooms['sensors'].devices:
+        for sensor in ardUniverse.sensors:
             status = sensor.get_status()
-            # if status:
-                # print(status)
+            #if status:
+                #print(status)
             player = players.find_player_for_rfid(status)
             for event in sensor.events:
                 handle_event(event, player, sensor)
-            
+
 
 def handle_event(event, player, sensor):
     is_active = event.eventID in active_events
@@ -269,7 +201,7 @@ def handle_event(event, player, sensor):
             print(player)
             print("Stopping the Hack")
             event.stop_hack()
-        
+
         running = event.tick()
         if not running:
             active_events.remove(event.eventID)
@@ -282,7 +214,7 @@ def handle_event(event, player, sensor):
             else:
                 sensor.data = [100,0,0]
                 sensor.do_action('sluit')
-        
-        
+
+
 if __name__ == '__main__':
     main()
