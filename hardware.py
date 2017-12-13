@@ -32,10 +32,6 @@ class OscarInterface(HardwareInterface):
         """Connecting to OSCAR succeeds trivially."""
         return True
 
-    def read(self):
-        """We can't read from OSCAR, always returns None."""
-        return None
-
     def send(self, data):
         """
         Open the URL. The supplied data is ignored. Returns a boolean

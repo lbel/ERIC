@@ -3,35 +3,11 @@
 import ConfigParser
 config = ConfigParser.ConfigParser()
 
+from device import Actuator, Sensor
 from event import Event
 from hardware import HardwareInterface, OscarInterface, ArduinoInterface, TestActuator, TestSensor
-from serial import SerialPool
-
-class Actuator:
-    def __init__(self, title, config):
-        self.title = title
-        self.actions = {}
-        self.__readConfig(config)
-
-    def __readConfig(self, config):
-        for key in commands:
-            if config.has_option(self.title, key):
-                self.actions[key] = map(str.strip, config.get(self.title, key).split(','))
-
-    def set_hardware(self, config, sensors_dict):
-        if DEBUG:
-            self.__hardware = TestActuator(self.title)
-        elif config.has_option(self.title, 'hardware'):
-            self.__hardware = sensors_dict[config.get(self.title, 'hardware')].get_hardware()
-        else:
-            self.__hardware = OscarInterface('http://localhost:5011/press/{}'.format(self.title))
-
-    def connect(self):
-        return self.__hardware.connect()
-
-    def do_action(self, action_name):
-        for action in self.actions.get(action_name, []):
-            self.__hardware.send(action)
+from player import Players
+from serial_pool import SerialPool
 
 class ArdUniverse:
     def __init__(self, config_file):
@@ -55,7 +31,7 @@ class ArdUniverse:
 
         sensor_names = map(str.strip, config.get('sensors', 'devices').split(','))
         for sensor_name in sensor_names:
-            if DEBUG:
+            if __debug__:
                 hardware = TestSensor(sensor_name)
             else:
                 hardware = ArduinoInterface(serial_pool, port, int(config.get(sensor_name, 'ardaddr'), 0))
@@ -89,97 +65,14 @@ class ArdUniverse:
         for device in self.sensors + self.actors:
             device.connect()
 
-commands = {
-    'status': b'\x0b',
-    'open': b'\x0c',
-    'sluit': b'\x0d',
-    'hack': b'\x0e'
-}
-
-wildcards = ['wildcard1', 'wildcard2', 'wildcard3', 'wildcard4']
-
-class Sensor:
-    def __init__(self, title, hardware, events):
-        self.title = title
-        self.__hardware = hardware
-        self.events = events
-        self.statuscode = None
-        self.notfoundcounter = 0
-        self.data = [0,0,0]
-
-    def get_status(self):
-        command = commands['status']
-        newstatuscode = self.__hardware.send(command)
-
-        if newstatuscode != self.statuscode:
-            self.notfoundcounter += 1
-            if self.notfoundcounter > 5:
-                self.statuscode = newstatuscode
-                return newstatuscode
-            return self.statuscode
-
-        if newstatuscode:
-            self.statuscode = newstatuscode
-            self.notfoundcounter = 0
-
-            return self.statuscode
-
-        return None
-
-    def get_hardware(self):
-        return self.__hardware
-
-    def connect(self):
-        return self.__hardware.connect()
-
-    def do_action(self, action):
-        if not action:
-            action = None
-
-        if action in commands:
-            command = commands[action]
-            return self.__hardware.send(command)
-
-class Player:
-    def __init__(self, name):
-        self.name = name
-        self.rfid = config.getint('spelers', name)
-        self.skills = [x.strip() for x in config.get('skills', name).split(',')]
-
-    def add_skill(self, new_skill):
-        for skill_name in wildcards:
-            if skill_name in self.skills:
-                self.skills.remove(skill_name)
-        self.skills.append(new_skill)
-
-
-class Players:
-    def __init__(self):
-        self.load_players()
-
-    def load_players(self):
-        self.players = []
-        self.rfidmap = {}
-        playernames = [x.strip() for x in config.get('common','spelers').split(',')]
-        for playername in playernames:
-            player = Player(playername)
-            self.players.append(player)
-            self.rfidmap[player.rfid] = player
-
-    def find_player_for_rfid(self, rfid):
-        return self.rfidmap.get(rfid,None)
-
-
 active_events = set()
 serial_pool = SerialPool()
-
-DEBUG = True
 
 def main():
     ardUniverse = ArdUniverse('ericconfig.txt')
     ardUniverse.connect_all()
 
-    players = Players()
+    players = Players(config)
 
     while True:
         for sensor in ardUniverse.sensors:
