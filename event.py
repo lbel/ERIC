@@ -91,13 +91,13 @@ class Event:
         self.__start_timer(300)
         self.active_sensor.data = [50,20,80]
         self.active_sensor.do_action("hack")
-        print('At ',time.time()-self.timer_start,': Player ',self.current_player.name,' started hacking')
+        print('Event {} - At {:.1f}: Player {} started hacking'.format(self.eventID, time.time()-self.timer_start, self.current_player.name))
 
     def __hack_tick(self):
         delta = time.time() - self.timer_start
         self.active_sensor.data = self.__get_keystone_led(delta,self.active_sensor.data)
         self.active_sensor.do_action("hack")
-        print('Player ',self.current_player.name,' is now hacking for ',delta,'seconds')
+        print('Event {} - Player {} is now hacking for {} seconds'.format(self.eventID, self.current_player.name, delta))
 
         if delta > self.timer_delay:
             self.current_player.add_skill(self.hack_skill)
