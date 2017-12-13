@@ -13,6 +13,9 @@ class Actuator:
         self.actions = {}
         self.__readConfig(config)
 
+    def __str__(self):
+        return 'Actuator {}'.format(self.title)
+
     def __readConfig(self, config):
         for key in commands:
             if config.has_option(self.title, key):
@@ -41,6 +44,9 @@ class Sensor:
         self.statuscode = None
         self.notfoundcounter = 0
         self.data = [0,0,0]
+
+    def __str__(self):
+        return 'Sensor {}'.format(self.title)
 
     def get_status(self):
         command = commands['status']

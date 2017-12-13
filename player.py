@@ -6,6 +6,9 @@ class Player:
         self.rfid = rfid
         self.skills = skills
 
+    def __str__(self):
+        return 'Player {} ({}, {})'.format(self.name, self.rfid, list(self.skills))
+
     def add_skill(self, new_skill):
         for skill_name in wildcards:
             if skill_name in self.skills:
