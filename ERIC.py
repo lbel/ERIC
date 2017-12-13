@@ -1,7 +1,12 @@
 #from kivy.logger import Logger
 #log = Logger
-import ConfigParser
-config = ConfigParser.ConfigParser()
+import sys
+if (sys.version_info > (3, 0)):
+    import configparser
+    config = configparser.ConfigParser()
+else:
+    import ConfigParser
+    config = ConfigParser.ConfigParser()
 
 from device import Actuator, Sensor
 from event import Event
@@ -19,7 +24,10 @@ class ArdUniverse:
     def parseConfig(self, config_file):
         config.read(config_file)
 
-        port = config.get('common', 'ard_port', 'COM20')
+        if (sys.version_info > (3, 0)):
+            port = config.get('common', 'ard_port', fallback='COM20')
+        else:
+            port = config.get('common', 'ard_port', 'COM20')
 
         devices_dict = {}
 

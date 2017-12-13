@@ -1,6 +1,12 @@
 from abc import ABCMeta, abstractmethod
 import time
-import urllib2
+
+import sys
+if (sys.version_info > (3, 0)):
+    from urllib.request import urlopen
+    from urllib.error import URLError
+else:
+    from urllib2 import urlopen, URLError
 
 class HardwareInterface:
     __metaclass__ = ABCMeta
@@ -38,9 +44,9 @@ class OscarInterface(HardwareInterface):
         indicating whether the operation succeeded.
         """
         try:
-            response = urllib2.urlopen(self.__url)
+            response = urlopen(self.__url)
             return bool(response)
-        except urllib2.URLError:
+        except URLError:
             return False
 
 class ArduinoInterface(HardwareInterface):
