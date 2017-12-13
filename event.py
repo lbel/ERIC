@@ -102,11 +102,11 @@ class Event:
 
         if delta > self.timer_delay:
             self.current_player.add_skill(self.hack_skill)
-            self.current_sequence = ['sluit', '900', 'open']
             self.is_hacking = False
             self.__stop_timer()
             self.active_sensor.data = [100,100,100]
             self.active_sensor.do_action("hack")
+            return False
         return True
 
     def __get_keystone_led(self, timebase, data):
