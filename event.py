@@ -9,16 +9,17 @@ class Event:
         self.current_sequence = []
         self.current_player = None
         self.is_hacking = False
-        self.is_active = False
         self.timer_start = None
         self.timer_delay = None
         self.sign = [1,1,1]
+
+    def __str__(self):
+        return 'Event {} ({})'.format(self.eventID, 'hacking' if self.is_hacking else '')
 
     def start(self, player, sensor):
         print("Start")
         self.current_player = player
         self.active_sensor = sensor
-        self.is_active = True
         self.current_sequence = self.__find_action_for_player(player)
 
     def tick(self):
