@@ -100,8 +100,7 @@ def handle_event(event, player, sensor):
             active_events.remove(event.eventID)
     else:
         if player:
-            print(set(player.skills).intersection(event.actions))
-            if bool(set(player.skills).intersection(event.actions)):
+            if not player.skills.isdisjoint(event.actions):
                 event.start(player, sensor)
                 active_events.add(event.eventID)
             else:

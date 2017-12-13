@@ -10,10 +10,11 @@ class Player:
         return 'Player {} ({}, {})'.format(self.name, self.rfid, list(self.skills))
 
     def add_skill(self, new_skill):
-        for skill_name in wildcards:
-            if skill_name in self.skills:
-                self.skills.remove(skill_name)
-        self.skills.append(new_skill)
+        if new_skill in wildcards:
+            for skill_name in wildcards:
+                if skill_name in self.skills:
+                    self.skills.remove(skill_name)
+        self.skills.add(new_skill)
 
 class Players:
     def __init__(self, config):
