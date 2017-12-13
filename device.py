@@ -19,7 +19,7 @@ class Actuator:
     def __readConfig(self, config):
         for key in commands:
             if config.has_option(self.title, key):
-                self.actions[key] = map(str.strip, config.get(self.title, key).split(','))
+                self.actions[key] = frozenset(map(str.strip, config.get(self.title, key).split(',')))
 
     def set_hardware(self, config, sensors_dict):
         if __debug__:

@@ -22,7 +22,7 @@ class Players:
         playernames = map(str.strip, config.get('common','spelers').split(','))
         for playername in playernames:
             rfid = config.getint('spelers', playername)
-            skills = map(str.strip, config.get('skills', playername).split(','))
+            skills = set(map(str.strip, config.get('skills', playername).split(',')))
             player = Player(playername, rfid, skills)
             self.players.append(player)
             self.rfidmap[player.rfid] = player
