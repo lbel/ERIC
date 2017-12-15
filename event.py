@@ -88,7 +88,7 @@ class Event:
 
     def __start_hack(self):
         self.is_hacking = True
-        self.__start_timer(300)
+        self.__start_timer(30)
         self.active_sensor.data = [50,20,80]
         self.active_sensor.do_action("hack")
         print('At ',time.time()-self.timer_start,': Player ',self.current_player.name,' started hacking')
@@ -101,7 +101,7 @@ class Event:
 
         if delta > self.timer_delay:
             self.current_player.add_skill(self.hack_skill)
-            self.current_sequence = ['sluit', '900', 'open']
+            self.current_sequence = ['sluit', '90', 'open']
             self.is_hacking = False
             self.__stop_timer()
             self.active_sensor.data = [100,100,100]
@@ -124,7 +124,3 @@ class Event:
             data[x] = data[x] + self.sign[x]*fadespeed
         
         return data
-        #for x in xrange(0,len(self.data)-1):
-         #   self.data[x] = self.data[x] + fadespeed
-          #  if (self.data[x] > 200):
-           #     self.data[x] = fadespeed
