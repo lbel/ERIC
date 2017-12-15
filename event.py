@@ -12,9 +12,10 @@ class Event:
         self.timer_start = None
         self.timer_delay = None
         self.sign = [1,1,1]
+        self.__previous_data = [0, 0, 0]
 
     def __str__(self):
-        return 'Event {} ({})'.format(self.eventID, 'hacking' if self.is_hacking else '')
+        return 'Event {} ({}, {}, {})'.format(self.eventID, 'hacking' if self.is_hacking else '', self.current_player, self.active_sensor)
 
     def start(self, player, sensor):
         print("Start")
@@ -41,6 +42,7 @@ class Event:
 
     def stop_hack(self):
         self.is_hacking = False
+        self.current_player = None
         self.__stop_timer()
         self.current_sequence = []
 
@@ -81,35 +83,34 @@ class Event:
             self.__start_hack()
         else:
             if action == 'open':
-                self.active_sensor.data = [0,100,0]
+                self.__previous_data = [0,100,0]
             else:
-                self.active_sensor.data = [0,0,100]
-            for actor in self.actors:
-                actor.do_action(action)
+                self.__previous_data = [0,0,100]
+            for actor in self.actors + [self.active_sensor]:
+                actor.do_action(action, self.__previous_data)
 
     def __start_hack(self):
         self.is_hacking = True
         self.__start_timer(30)
-        self.active_sensor.data = [50,20,80]
-        self.active_sensor.do_action("hack")
+        self.__previous_data = [50, 20, 80]
+        self.active_sensor.do_action("hack", self.__previous_data)
         print('Event {} - At {:.1f}: Player {} started hacking'.format(self.eventID, time.time()-self.timer_start, self.current_player.name))
 
     def __hack_tick(self):
         delta = time.time() - self.timer_start
-        self.active_sensor.data = self.__get_keystone_led(delta,self.active_sensor.data)
-        self.active_sensor.do_action("hack")
+        self.active_sensor.do_action("hack", self.__get_keystone_led(delta))
         print('Event {} - Player {} is now hacking for {} seconds'.format(self.eventID, self.current_player.name, delta))
 
         if delta > self.timer_delay:
             self.current_player.add_skill(self.hack_skill)
             self.is_hacking = False
             self.__stop_timer()
-            self.active_sensor.data = [100,100,100]
-            self.active_sensor.do_action("hack")
+            self.__previous_data = [100, 100, 100]
+            self.active_sensor.do_action("hack", self.__previous_data)
             return False
         return True
 
-    def __get_keystone_led(self, timebase, data):
+    def __get_keystone_led(self, timebase):
         if timebase < 100:
             fadespeed = 1
         elif timebase < 200:
@@ -118,10 +119,10 @@ class Event:
             fadespeed = 3
 
         for x in [0,1,2]:
-            if data[x] >= 100:
+            if self.__previous_data[x] >= 100:
                 self.sign[x] = -1
-            elif data[x] <= 5:
+            elif self.__previous_data[x] <= 5:
                 self.sign[x] = 1
-            data[x] = data[x] + self.sign[x]*fadespeed
+            self.__previous_data[x] = self.__previous_data[x] + self.sign[x]*fadespeed
 
-        return data
+        return self.__previous_data

@@ -14,7 +14,7 @@ open = sfx.lightning1
 sluit = deur1.close
 
 [deur2]
-open = sfx.lightning1
+open = sfx.lightning2
 sluit = deur2.close
 
 [deur3]
@@ -25,32 +25,12 @@ sluit = deur3.close
 open = deur4.open
 sluit = deur4.close
 
-[steen1_act]
-hack = onklaarmaken
-open = wildcard1
-hardware = steen1
-
-[steen2_act]
-hack = onklaarmaken
-open = wildcard2
-hardware = steen2
-
-[steen3_act]
-hack = onklaarmaken
-open = wildcard3
-hardware = steen3
-
-[steen4_act]
-hack = onklaarmaken
-open = wildcard4
-hardware = steen4
-
 
 [sensors]
 devices = steen1, steen2, steen3, steen4, poort
 
 [steen1]
-ardaddr = 0x0a
+ardaddr = 0x0b
 events = event1
 
 [steen2]
@@ -75,13 +55,13 @@ devices = event1, event2
 [event1]
 event_id = 0xf0
 actors = deur1, steen1_act
-wildcard1 =sluit,900,open
+wildcard1 =sluit,5,open
 onklaarmaken = hack(steen1_act,wildcard1)
 
 [event2]
 event_id = 0xf1
 actors = deur2, steen2_act
-wildcard2 =sluit,900,open
+wildcard2 =sluit,5,open
 onklaarmaken = hack(steen2_act,wildcard2)
 
 

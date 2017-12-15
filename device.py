@@ -27,14 +27,14 @@ class Actuator:
         elif config.has_option(self.title, 'hardware'):
             self.__hardware = sensors_dict[config.get(self.title, 'hardware')].get_hardware()
         else:
-            self.__hardware = OscarInterface('http://localhost:5011/press/{}'.format(self.title))
+            self.__hardware = OscarInterface('http://localhost:5011/press/{}')
 
     def connect(self):
         return self.__hardware.connect()
 
-    def do_action(self, action_name):
+    def do_action(self, action_name, data = None):
         for action in self.actions.get(action_name, []):
-            self.__hardware.send(action)
+            self.__hardware.send(action, data)
 
 class Sensor:
     def __init__(self, title, hardware, events):
@@ -43,29 +43,27 @@ class Sensor:
         self.events = events
         self.statuscode = None
         self.notfoundcounter = 0
-        self.data = [0,0,0]
 
     def __str__(self):
         return 'Sensor {}'.format(self.title)
 
     def get_status(self):
         command = commands['status']
-        newstatuscode = self.__hardware.send(command)
-
+        newstatuscode = self.__hardware.send(command, [0, 0, 0])
+        print "status = ",self.statuscode
+        print "new status = ",newstatuscode
+        
         if self.statuscode and newstatuscode != self.statuscode:
             self.notfoundcounter += 1
+            print self.notfoundcounter
             if self.notfoundcounter > 5:
                 self.statuscode = newstatuscode
                 return newstatuscode
             return self.statuscode
-
-        if newstatuscode:
-            self.statuscode = newstatuscode
-            self.notfoundcounter = 0
-
-            return self.statuscode
-
-        return None
+            
+        self.statuscode = newstatuscode
+        self.notfoundcounter = 0
+        return self.statuscode
 
     def get_hardware(self):
         return self.__hardware
@@ -73,11 +71,12 @@ class Sensor:
     def connect(self):
         return self.__hardware.connect()
 
-    def do_action(self, action):
-        if not action:
-            action = None
+    def do_action(self, action_name, data = None):
+        if not action_name:
+            action_name = None
+        if not data:
+            data = [0, 0, 0]
 
-        if action in commands:
-            command = commands[action]
-            return self.__hardware.send(command)
-
+        if action_name in commands:
+            command = commands[action_name]
+            return self.__hardware.send(command, data)

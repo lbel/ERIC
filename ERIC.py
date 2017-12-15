@@ -77,8 +77,6 @@ def main():
     while True:
         for sensor in ardUniverse.sensors:
             status = sensor.get_status()
-            #if status:
-                #print(status)
             player = players.find_player_for_rfid(status)
             for event in sensor.events:
                 handle_event(event, player, sensor)
@@ -87,6 +85,7 @@ def main():
 def handle_event(event, player, sensor):
     is_active = event.eventID in active_events
     running = False
+    if event.eventID == "0xf1" and sensor.title == "steen2": print("{}@{} triggered {}active event {}".format(player, sensor, "" if is_active else "in", event))
     if is_active:
         if event.active_sensor == sensor and player != event.current_player and event.is_hacking:
             print(event.active_sensor)
