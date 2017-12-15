@@ -89,7 +89,7 @@ class Event:
 
     def __start_hack(self):
         self.is_hacking = True
-        self.__start_timer(300)
+        self.__start_timer(30)
         self.active_sensor.data = [50,20,80]
         self.active_sensor.do_action("hack")
         print('Event {} - At {:.1f}: Player {} started hacking'.format(self.eventID, time.time()-self.timer_start, self.current_player.name))
@@ -125,7 +125,3 @@ class Event:
             data[x] = data[x] + self.sign[x]*fadespeed
 
         return data
-        #for x in xrange(0,len(self.data)-1):
-         #   self.data[x] = self.data[x] + fadespeed
-          #  if (self.data[x] > 200):
-           #     self.data[x] = fadespeed
