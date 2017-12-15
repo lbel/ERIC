@@ -10,11 +10,11 @@ ard_port = COM22
 devices = deur1, deur2, deur3, deur4, steen1_act, steen2_act, steen3_act, steen4_act
 
 [deur1]
-open = deur1.open
+open = sfx.lightning1
 sluit = deur1.close
 
 [deur2]
-open = deur2.open
+open = sfx.lightning1
 sluit = deur2.close
 
 [deur3]
@@ -81,7 +81,7 @@ onklaarmaken = hack(steen1_act,wildcard1)
 [event2]
 event_id = 0xf1
 actors = deur2, steen2_act
-wildcard2 =sluit,90,open
+wildcard2 =sluit,900,open
 onklaarmaken = hack(steen2_act,wildcard2)
 
 

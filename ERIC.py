@@ -8,8 +8,8 @@ config = ConfigParser.ConfigParser()
 from event import Event
 
 def send_to_oscar(name):
-    pass
-    #urllib2.urlopen('http://localhost:5011/press/%s' % (name))
+    print name
+    urllib2.urlopen('http://localhost:5011/press/%s' % (name))
     
 SERIAL_BAUD_RATE = 57600
 START_BYTE = b'\x02'
@@ -63,10 +63,12 @@ class Actuator:
                     self.actions[key] = level
         
     def tell_oscar(self, action_name):
+        print action_name
         if self.hardware:
             self.hardware.do_action(action_name)
         else:
-            for action in self.actions[action_name]:
+            action_list = self.actions[action_name].split(',')
+            for action in action_list:
                 send_to_oscar(action)
     
     
